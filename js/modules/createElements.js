@@ -1,3 +1,89 @@
+// Функция для генерации уникального ID
+const generateId = () => Math.random().toString().substring(2, 10);
+
+// Авторизация пользователя
+const userName = prompt("Пожалуйста, введите ваше имя:");
+
+if (!userName) {
+  alert("Имя пользователя обязательно!");
+  throw new Error("Имя по��ьзователя обязательно!");
+}
+
+// Функция для загрузки задач из localStorage
+const loadTasks = () => {
+  const storedTasks = JSON.parse(localStorage.getItem(userName) || "[]");
+  storedTasks.forEach(task => {
+    renderTask(task);
+  });
+};
+
+// Функция для сохранения задач в localStorage
+const saveTasks = (tasks) => {
+  localStorage.setItem(userName, JSON.stringify(tasks));
+};
+
+// Функция для отрисовки задачи в таблице
+const renderTask = (task) => {
+  const tbody = tableElement.querySelector('tbody');
+  const newRow = document.createElement('tr');
+  newRow.className = task.status === 'Выполнена' ? 'table-success' : 'table-light';
+  const columns = [
+    {
+      text: `${tbody.rows.length + 1}`,
+      className: ''
+    },
+    {
+      text: task.text,
+      className: 'task'
+    },
+    {
+      text: task.status,
+      className: ''
+    },
+    {
+      html: `
+        <button class="btn btn-danger">Удалить</button>
+        <button class="btn btn-success">Завершить</button>
+      `,
+      className: ''
+    }
+  ];
+  columns.forEach((column, index) => {
+    const td = document.createElement('td');
+    td.className = column.className;
+    if (column.html) {
+      td.innerHTML = column.html;
+    } else {
+      td.textContent = column.text;
+    }
+    newRow.appendChild(td);
+  });
+  tbody.appendChild(newRow);
+
+  const deleteButton = newRow.querySelector('.btn-danger');
+  const finishButton = newRow.querySelector('.btn-success');
+
+  deleteButton.addEventListener('click', () => {
+    newRow.remove();
+    let tasks = JSON.parse(localStorage.getItem(userName) || "[]");
+    tasks = tasks.filter(t => t.id !== task.id);
+    saveTasks(tasks);
+  });
+
+  finishButton.addEventListener('click', () => {
+    newRow.className = 'table-success';
+    const taskElement = newRow.querySelector('.task');
+    taskElement.className = 'text-decoration-line-through task';
+    const statusElement = newRow.querySelector('td:nth-child(3)');
+    statusElement.textContent = 'Выполнена';
+
+    let tasks = JSON.parse(localStorage.getItem(userName) || "[]");
+    tasks = tasks.map(t => t.id === task.id ? { ...t, status: 'Выполнена' } : t);
+    saveTasks(tasks);
+  });
+};
+
+// Создание элементов страницы
 const createContainer = () => {
   const container = document.querySelector(".app-container");
   container.className = 'app-container vh-100 w-100 d-flex align-items-center justify-content-center flex-column';
@@ -96,57 +182,23 @@ const createTable = (wrapper) => {
 
 const tableElement = createTable(tableWrapper);
 
+// Отрисовка таблицы
 const createTableRow = () => {
   const taskText = inputFormElement.value.trim();
   if (taskText) {
-    const tbody = tableElement.querySelector('tbody');
-    const newRow = document.createElement('tr');
-    newRow.className = 'table-light';
-    const columns = [
-      {
-        text: `${tbody.rows.length + 1}`,
-        className: ''
-      },
-      {
-        text: taskText,
-        className: 'task'
-      },
-      {
-        text: 'В процессе',
-        className: ''
-      },
-      {
-        html: `
-          <button class="btn btn-danger">Удалить</button>
-          <button class="btn btn-success">Завершить</button>
-        `,
-        className: ''
-      }
-    ];
-    columns.forEach((column, index) => {
-      const td = document.createElement('td');
-      td.className = column.className;
-      if (column.html) {
-        td.innerHTML = column.html;
-      } else {
-        td.textContent = column.text;
-      }
-      newRow.appendChild(td);
-    });
-    tbody.appendChild(newRow);
+    const task = {
+      id: generateId(),
+      text: taskText,
+      status: 'В процессе'
+    };
+
+    renderTask(task);
+
+    const tasks = JSON.parse(localStorage.getItem(userName) || "[]");
+    tasks.push(task);
+    saveTasks(tasks);
+
     inputFormElement.value = '';
-    const deleteButton = newRow.querySelector('.btn-danger');
-    const finishButton = newRow.querySelector('.btn-success');
-    deleteButton.addEventListener('click', () => {
-      newRow.remove();
-    });
-    finishButton.addEventListener('click', () => {
-      newRow.className = 'table-success';
-      const taskElement = newRow.querySelector('.task');
-      taskElement.className = 'text-decoration-line-through task';
-      const statusElement = newRow.querySelector('td:nth-child(3)');
-      statusElement.textContent = 'Выполнена';
-    });
   }
 };
 
@@ -154,3 +206,6 @@ formElement.addEventListener('submit', (e) => {
   e.preventDefault();
   createTableRow();
 });
+
+// Загружаем задачи при старте приложения
+loadTasks();
